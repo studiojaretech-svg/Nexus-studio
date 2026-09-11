@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Network, 
-  ShieldCheck, 
-  Boxes, 
-  Users2, 
-  Sparkles, 
+import {
+  Network,
+  ShieldCheck,
+  Boxes,
+  Users2,
+  Sparkles,
   ArrowRight,
   X,
   Layers,
@@ -148,9 +148,70 @@ interface EcosystemProps {
   onClose?: () => void;
 }
 
+interface BurstDot {
+  id: string;
+  color: string;
+  originX: number;
+  originY: number;
+  waypoints: { x: number; y: number }[];
+  duration: number;
+  size: number;
+}
+
+const BURST_PALETTE = ["#22D3EE", "#A855F7", "#F472B6", "#FACC15", "#34D399", "#818CF8"];
+
 export default function Ecosystem({ onClose }: EcosystemProps) {
   const [activeTab, setActiveTab] = useState<CommunityTab>(COMMUNITY_TABS[0]);
   const [selectedNode, setSelectedNode] = useState<string>("nexus-core");
+  const [burstDots, setBurstDots] = useState<BurstDot[]>([]);
+  const burstTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Static constellation of faint background dots — generated once, never re-randomized on re-render
+  const scatterDots = useMemo(() => {
+    return Array.from({ length: 42 }).map((_, i) => {
+      const isAccent = Math.random() < 0.22;
+      return {
+        id: i,
+        x: Math.random() * 96 + 2,
+        y: Math.random() * 94 + 3,
+        size: isAccent ? Math.random() * 2.5 + 2.5 : Math.random() * 2 + 1.5,
+        isAccent,
+        delay: Math.random() * 3.5,
+        duration: Math.random() * 2.5 + 2.5,
+      };
+    });
+  }, []);
+
+  const spawnBurst = (node: NodeData) => {
+    const dots: BurstDot[] = Array.from({ length: 9 }).map((_, i) => {
+      const waypoints = Array.from({ length: 3 }).map(() => ({
+        x: Math.min(96, Math.max(4, node.x + (Math.random() - 0.5) * 84)),
+        y: Math.min(94, Math.max(6, node.y + (Math.random() - 0.5) * 78)),
+      }));
+      return {
+        id: `${node.id}-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+        color: Math.random() < 0.55 ? node.color : BURST_PALETTE[Math.floor(Math.random() * BURST_PALETTE.length)],
+        originX: node.x,
+        originY: node.y,
+        waypoints,
+        duration: Math.random() * 1.2 + 2.4,
+        size: Math.random() * 2 + 2.5,
+      };
+    });
+
+    setBurstDots((prev) => [...prev, ...dots]);
+
+    const cleanupId = `cleanup-${node.id}-${Date.now()}`;
+    burstTimers.current[cleanupId] = setTimeout(() => {
+      setBurstDots((prev) => prev.filter((d) => !dots.some((nd) => nd.id === d.id)));
+      delete burstTimers.current[cleanupId];
+    }, 3600);
+  };
+
+  const handleNodeClick = (node: NodeData) => {
+    setSelectedNode(node.id);
+    spawnBurst(node);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0A0B0E]/98 backdrop-blur-3xl overflow-y-auto px-4 sm:px-8 md:px-16 lg:px-28 py-6 sm:py-10 text-white select-none">
@@ -185,9 +246,30 @@ export default function Ecosystem({ onClose }: EcosystemProps) {
       {/* 2. Top Row: Node Network Graph (Left) + Gamer ID Card (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-10">
         {/* Left: Interactive Node Canvas */}
-        <div className="lg:col-span-8 relative w-full h-[280px] sm:h-[340px] md:h-[380px] rounded-3xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[radial-gradient(#22d3ee_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none" />
-          <div className="absolute w-56 sm:w-72 h-56 sm:h-72 rounded-full border border-cyan-500/20 animate-ping pointer-events-none" />
+        <div className="lg:col-span-8 relative w-full h-[280px] sm:h-[340px] md:h-[380px] rounded-3xl bg-[#0A0B10] border border-white/10 overflow-hidden">
+          {/* Faint constellation of background dots */}
+          <div className="absolute inset-0 pointer-events-none">
+            {scatterDots.map((dot) => (
+              <motion.span
+                key={dot.id}
+                className="absolute rounded-full"
+                style={{
+                  left: `${dot.x}%`,
+                  top: `${dot.y}%`,
+                  width: dot.size,
+                  height: dot.size,
+                  backgroundColor: dot.isAccent ? "#A855F7" : "#94A3B8",
+                }}
+                animate={{ opacity: [0.15, dot.isAccent ? 0.9 : 0.55, 0.15] }}
+                transition={{
+                  duration: dot.duration,
+                  delay: dot.delay,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+            ))}
+          </div>
 
           {/* SVG Connection Lines */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
@@ -198,51 +280,86 @@ export default function Ecosystem({ onClose }: EcosystemProps) {
               const isHighlight = selectedNode === line.from || selectedNode === line.to;
 
               return (
-                <g key={idx}>
-                  <line
-                    x1={`${fromNode.x}%`}
-                    y1={`${fromNode.y}%`}
-                    x2={`${toNode.x}%`}
-                    y2={`${toNode.y}%`}
-                    stroke={isHighlight ? "#22D3EE" : "rgba(255,255,255,0.15)"}
-                    strokeWidth={isHighlight ? "2" : "1"}
-                    strokeDasharray={isHighlight ? "none" : "3 3"}
-                  />
-                </g>
+                <line
+                  key={idx}
+                  x1={`${fromNode.x}%`}
+                  y1={`${fromNode.y}%`}
+                  x2={`${toNode.x}%`}
+                  y2={`${toNode.y}%`}
+                  stroke={isHighlight ? fromNode.color : "rgba(255,255,255,0.18)"}
+                  strokeWidth={isHighlight ? 1.4 : 1}
+                  strokeDasharray="4 4"
+                  style={isHighlight ? { filter: `drop-shadow(0 0 3px ${fromNode.color}80)` } : undefined}
+                />
               );
             })}
           </svg>
+
+          {/* Randomly drifting colour dots spawned on node click */}
+          <AnimatePresence>
+            {burstDots.map((dot) => (
+              <motion.span
+                key={dot.id}
+                className="absolute rounded-full pointer-events-none z-30"
+                style={{
+                  width: dot.size,
+                  height: dot.size,
+                  backgroundColor: dot.color,
+                  boxShadow: `0 0 6px ${dot.color}, 0 0 2px ${dot.color}`,
+                  marginLeft: -dot.size / 2,
+                  marginTop: -dot.size / 2,
+                }}
+                initial={{ left: `${dot.originX}%`, top: `${dot.originY}%`, opacity: 0, scale: 0 }}
+                animate={{
+                  left: [`${dot.originX}%`, ...dot.waypoints.map((w) => `${w.x}%`)],
+                  top: [`${dot.originY}%`, ...dot.waypoints.map((w) => `${w.y}%`)],
+                  opacity: [0, 1, 1, 1, 0],
+                  scale: [0, 1, 1, 1, 0.4],
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: dot.duration, ease: "easeInOut", times: [0, 0.28, 0.55, 0.8, 1] }}
+              />
+            ))}
+          </AnimatePresence>
 
           {/* Node Anchors */}
           {NODES.map((node) => {
             const isSelected = selectedNode === node.id;
             const Icon = node.icon;
             return (
-              <div
+              <button
+                type="button"
                 key={node.id}
-                onClick={() => setSelectedNode(node.id)}
+                onClick={() => handleNodeClick(node)}
                 style={{
                   left: `${node.x}%`,
                   top: `${node.y}%`,
                   transform: "translate(-50%, -50%)",
                 }}
-                className={`absolute cursor-pointer flex flex-col items-center gap-1.5 transition-all duration-300 z-20 ${
-                  isSelected ? "scale-110" : "hover:scale-105"
-                }`}
+                className="absolute z-20 cursor-pointer focus:outline-none"
               >
-                <div
-                  className={`w-9 h-9 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center backdrop-blur-xl border transition-all ${
-                    isSelected
-                      ? "bg-cyan-500/25 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)]"
-                      : "bg-white/5 border-white/15"
-                  }`}
+                <motion.div
+                  animate={{ scale: isSelected ? 1.06 : 1 }}
+                  whileTap={{ scale: 0.94 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="flex items-center gap-1.5 sm:gap-2 pl-1 pr-2.5 sm:pr-3.5 py-1 rounded-full backdrop-blur-xl border whitespace-nowrap"
+                  style={{
+                    backgroundColor: isSelected ? `${node.color}33` : "rgba(255,255,255,0.06)",
+                    borderColor: isSelected ? `${node.color}99` : "rgba(255,255,255,0.14)",
+                    boxShadow: isSelected ? `0 0 16px ${node.color}55` : "none",
+                  }}
                 >
-                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: node.color }} />
-                </div>
-                <span className="text-[8px] sm:text-[10px] font-mono font-bold uppercase tracking-wider text-white/80 bg-black/80 px-2 py-0.5 rounded border border-white/10 whitespace-nowrap">
-                  {node.label}
-                </span>
-              </div>
+                  <span
+                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: node.color }}
+                  >
+                    <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-black/80" />
+                  </span>
+                  <span className="text-[9px] sm:text-[11px] font-mono font-bold uppercase tracking-wider text-white/90">
+                    {node.label}
+                  </span>
+                </motion.div>
+              </button>
             );
           })}
         </div>
@@ -330,17 +447,15 @@ export default function Ecosystem({ onClose }: EcosystemProps) {
                   {/* Row Content */}
                   <div className="relative z-10 flex items-center gap-3.5">
                     <div
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
-                        isActive ? "bg-cyan-400 text-black" : "bg-white/10 text-white/70"
-                      }`}
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isActive ? "bg-cyan-400 text-black" : "bg-white/10 text-white/70"
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
                       <span
-                        className={`text-xs sm:text-sm font-bold uppercase tracking-wider block transition-colors ${
-                          isActive ? "text-white" : "text-white/80"
-                        }`}
+                        className={`text-xs sm:text-sm font-bold uppercase tracking-wider block transition-colors ${isActive ? "text-white" : "text-white/80"
+                          }`}
                       >
                         {tab.title}
                       </span>
@@ -351,9 +466,8 @@ export default function Ecosystem({ onClose }: EcosystemProps) {
                   </div>
 
                   <span
-                    className={`relative z-10 text-[10px] font-mono font-bold tracking-wider ${
-                      isActive ? "text-cyan-300" : "text-white/40"
-                    }`}
+                    className={`relative z-10 text-[10px] font-mono font-bold tracking-wider ${isActive ? "text-cyan-300" : "text-white/40"
+                      }`}
                   >
                     {tab.code}
                   </span>
@@ -503,3 +617,4 @@ export default function Ecosystem({ onClose }: EcosystemProps) {
     </div>
   );
 }
+

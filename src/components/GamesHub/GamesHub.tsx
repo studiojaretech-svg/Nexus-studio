@@ -2,13 +2,13 @@
 
 import React, { useState } from "react";
 import { PROJECTS, Project } from "../../data/projects";
-import { 
-  Search, 
-  Sparkles, 
-  Gamepad2, 
-  ExternalLink, 
-  Heart, 
-  Cpu, 
+import {
+  Search,
+  Sparkles,
+  Gamepad2,
+  ExternalLink,
+  Heart,
+  Cpu,
   Calendar,
   X
 } from "lucide-react";
@@ -16,20 +16,24 @@ import {
 interface GamesHubProps {
   onClose?: () => void;
   onSelectGame?: (projectId: number) => void;
+  wishlistIds?: number[];
+  onToggleWishlist?: (id: number) => void;
 }
-
 const GENRES = ["All", "Action RPG", "Dark Fantasy", "Sci-Fi", "FPS", "Survival", "Stealth"];
 
-export default function GamesHub({ onClose, onSelectGame }: GamesHubProps) {
+
+export default function GamesHub({
+  onClose,
+  onSelectGame,
+  wishlistIds = [],
+  onToggleWishlist,
+}: GamesHubProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("All");
-  const [wishlist, setWishlist] = useState<number[]>([]);
 
-  const toggleWishlist = (id: number, e: React.MouseEvent) => {
+  const handleToggle = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setWishlist((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    onToggleWishlist?.(id);
   };
 
   const filteredProjects = PROJECTS.filter((project) => {
@@ -133,11 +137,10 @@ export default function GamesHub({ onClose, onSelectGame }: GamesHubProps) {
             <button
               key={genre}
               onClick={() => setSelectedGenre(genre)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wider whitespace-nowrap transition-all ${
-                selectedGenre === genre
-                  ? "bg-cyan-400 text-black shadow-[0_0_12px_rgba(6,182,212,0.5)]"
-                  : "bg-white/5 border border-white/10 text-white/70 hover:text-white hover:border-white/30"
-              }`}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wider whitespace-nowrap transition-all ${selectedGenre === genre
+                ? "bg-cyan-400 text-black shadow-[0_0_12px_rgba(6,182,212,0.5)]"
+                : "bg-white/5 border border-white/10 text-white/70 hover:text-white hover:border-white/30"
+                }`}
             >
               {genre}
             </button>
@@ -148,7 +151,7 @@ export default function GamesHub({ onClose, onSelectGame }: GamesHubProps) {
       {/* 4. Responsive Game Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 pb-16">
         {filteredProjects.map((project) => {
-          const isWishlisted = wishlist.includes(project.id);
+          const isWishlisted = wishlistIds.includes(project.id);
 
           return (
             <div
@@ -175,12 +178,11 @@ export default function GamesHub({ onClose, onSelectGame }: GamesHubProps) {
                 <button
                   type="button"
                   aria-label="Wishlist"
-                  onClick={(e) => toggleWishlist(project.id, e)}
-                  className={`absolute top-3.5 right-3.5 p-2 rounded-full border backdrop-blur-md transition-all ${
-                    isWishlisted
-                      ? "bg-rose-500/20 border-rose-400 text-rose-400"
-                      : "bg-black/50 border-white/15 text-white/70 hover:text-rose-400"
-                  }`}
+                  onClick={(e) => handleToggle(project.id, e)}
+                  className={`absolute top-3.5 right-3.5 p-2 rounded-full border backdrop-blur-md transition-all ${isWishlisted
+                    ? "bg-rose-500/20 border-rose-400 text-rose-400"
+                    : "bg-black/50 border-white/15 text-white/70 hover:text-rose-400"
+                    }`}
                 >
                   <Heart
                     className={`w-3.5 h-3.5 ${isWishlisted ? "fill-rose-400" : ""}`}

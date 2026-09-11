@@ -3,10 +3,6 @@
 import React, { useState } from "react";
 import {
   Cpu,
-  Search,
-  Heart,
-  Bell,
-  User,
   Wallet,
   CheckCircle2,
   Loader2,
@@ -14,10 +10,14 @@ import {
   X,
 } from "lucide-react";
 import NavDropdown, { MenuItem } from "./NavDropdown";
+import HeaderActions from "../HeaderActions/HeaderActions";
 
 interface HeaderProps {
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  wishlistIds?: number[];
+  onToggleWishlist?: (id: number) => void;
+  onOpenGameDetail?: (id: number) => void;
 }
 
 const NAV_ITEMS: MenuItem[] = [
@@ -32,28 +32,20 @@ const NAV_ITEMS: MenuItem[] = [
       { title: "Paradox Shift", badge: "Phase 3" },
     ],
   },
-  {
-    title: "Ecosystem",
-    submenu: [
-      { title: "Sovereign Gamer ID" },
-      { title: "Guild DAO Governance" },
-      { title: "Asset Bridge" },
-    ],
-  },
-  {
-    title: "Engine",
-    submenu: [
-      { title: "Spatial Multi-Server Mesh" },
-      { title: "Game Dev SDK" },
-      { title: "Validator Diagnostics", badge: "<15ms" },
-    ],
-  },
-  {
-    title: "Tokenomics",
-  },
+  { title: "Games Hub" },
+  { title: "Ecosystem" },
+  { title: "Engine" },
+  { title: "Tokenomics" },
+  { title: "Dashboard" },
 ];
 
-export default function Header({ activeTab = "Games", onTabChange }: HeaderProps) {
+export default function Header({
+  activeTab = "Games",
+  onTabChange,
+  wishlistIds = [],
+  onToggleWishlist,
+  onOpenGameDetail,
+}: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [walletConnected, setWalletConnected] = useState(false);
@@ -80,7 +72,7 @@ export default function Header({ activeTab = "Games", onTabChange }: HeaderProps
       {/* 1. Left: Brand Studio Identity */}
       <div
         onClick={() => onTabChange?.("Games")}
-        className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group flex-shrink-0"
+        className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0"
       >
         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center transition-all group-hover:border-cyan-400 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]">
           <Cpu className="w-5 h-5 text-cyan-400" />
@@ -112,62 +104,21 @@ export default function Header({ activeTab = "Games", onTabChange }: HeaderProps
         ))}
       </nav>
 
-      {/* 3. Right: Network Status, Icons & Solid Connect Node */}
+      {/* 3. Right: Network Status, Icons (HeaderActions) & Solid Connect Node */}
       <div className="flex items-center gap-2 sm:gap-2.5">
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-white/10 text-[11px] font-medium text-zinc-300 backdrop-blur-md">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span>Network Online</span>
         </div>
 
-        {/* Search */}
-        <button
-          type="button"
-          aria-label="Search"
-          onClick={() => onTabChange?.("Search")}
-          className="p-2 sm:p-2.5 rounded-full bg-white/5 border border-white/10 hover:border-cyan-400/50 hover:text-cyan-400 text-white/70 transition-all backdrop-blur-md"
-        >
-          <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </button>
-
-        {/* Wishlist */}
-        <button
-          type="button"
-          aria-label="Wishlist"
-          onClick={() => onTabChange?.("Wishlist")}
-          className={`flex p-2 sm:p-2.5 rounded-full border transition-all backdrop-blur-md ${activeTab === "Wishlist"
-            ? "bg-rose-500/20 border-rose-400 text-rose-400"
-            : "bg-white/5 border-white/10 hover:border-rose-400/50 hover:text-rose-400 text-white/70"
-            }`}
-        >
-          <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </button>
-
-        {/* Notifications */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          onClick={() => onTabChange?.("Notifications")}
-          className={`relative p-2 sm:p-2.5 rounded-full border transition-all backdrop-blur-md ${activeTab === "Notifications"
-            ? "bg-cyan-500/20 border-cyan-400 text-cyan-400"
-            : "bg-white/5 border-white/10 hover:border-cyan-400/50 hover:text-cyan-400 text-white/70"
-            }`}
-        >
-          <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-        </button>
-
-        {/* Account Profile */}
-        <button
-          type="button"
-          aria-label="Account Profile"
-          onClick={() => onTabChange?.("Account")}
-          className={`p-2 sm:p-2.5 rounded-full border transition-all backdrop-blur-md ${activeTab === "Account"
-            ? "bg-cyan-500/20 border-cyan-400 text-cyan-400"
-            : "bg-white/5 border-white/10 hover:border-cyan-400 hover:text-cyan-400 text-white/80"
-            }`}
-        >
-          <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </button>
+        {/* Modular Header Action Suite */}
+        <HeaderActions
+          wishlistIds={wishlistIds}
+          onToggleWishlist={(id) => onToggleWishlist?.(id)}
+          onOpenGameDetail={(id) => onOpenGameDetail?.(id)}
+          onViewAllWishlist={() => onTabChange?.("Games Hub")}
+          onNavigateDashboard={() => onTabChange?.("Dashboard")}
+        />
 
         {/* Solid Non-Transparent Connect Node Button */}
         <button
